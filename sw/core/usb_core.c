@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
+//#include <assert.h>
 #include "usb_hw.h"
 #include "usb_core.h"
 #include "usb_defs.h"
@@ -15,9 +15,14 @@
 #define USBLOG_DATA     4
 
 // Current log level
-#define USBLOG_LEVEL    USBLOG_ERR
+#define USBLOG_LEVEL    USBLOG_INFO
 
-#define USBLOG(l,a)     do { if (l <= USBLOG_LEVEL) printf a; } while (0)
+#ifdef USB_DEBUG
+extern int dd_printf(const char *__restrict fmt, ...);
+#define USBLOG(l,a)     do { if (l <= USBLOG_LEVEL) dd_printf a; } while (0)
+#else
+#define USBLOG(...)
+#endif
 
 //-----------------------------------------------------------------
 // Defines:
@@ -106,7 +111,7 @@ static int usb_control_read(struct usb_device *dev, uint8_t *p, int length)
         else if (res != USB_RES_NAK)
             break;
 
-        // Wait a couple of ms on retries        
+        // Wait a couple of ms on retries
         usbhw_timer_sleep(USB_CONTROL_NAK_RETRY_MS);
     }
 
@@ -486,7 +491,7 @@ void usb_reset_device(struct usb_device *dev)
 
     dev->address   = 0;
     dev->state = USB_DEVSTATE_DEFAULT;
-    
+
     for (j=0;j<MAX_INTERFACES;j++)
     {
         dev->interfaces[j].if_endpoints= 0;
@@ -495,14 +500,14 @@ void usb_reset_device(struct usb_device *dev)
         dev->interfaces[j].if_protocol = 0;
 
         for (i=0;i<MAX_ENDPOINTS;i++)
-        {            
+        {
             // Default to 8 byte max transfer size
             dev->interfaces[j].endpoint[i].max_packet_size = 8;
 
             dev->interfaces[j].endpoint[i].endpoint_type = 0;
             dev->interfaces[j].endpoint[i].dev = dev;
             dev->interfaces[j].endpoint[i].endpoint = 0;
-            
+
             // Reset endpoint toggle to DATA0
             dev->interfaces[j].endpoint[i].data_toggle = 0;
         }
@@ -612,7 +617,7 @@ int usb_configure_device(struct usb_device *dev, int device_address)
 //-----------------------------------------------------------------
 // usb_enumerate: Try and enumerate the attached device
 //-----------------------------------------------------------------
-int usb_enumerate(struct usb_device *dev, 
+int usb_enumerate(struct usb_device *dev,
                   int (*enum_interface)(struct usb_device *dev, struct usb_interface *intp),
                   int (*enum_class_specific)(struct usb_device *dev, struct usb_interface *intp, void *desc))
 {
@@ -747,7 +752,7 @@ int usb_enumerate(struct usb_device *dev,
                 dev->interfaces[current_int].endpoint[ep_addr].max_packet_size = USB_BYTE_SWAP16(endp_desc->wMaxPacketSize);
                 dev->interfaces[current_int].endpoint[ep_addr].endpoint_type   = endp_desc->bmAttributes & ENDPOINT_TYPE_MASK;
                 dev->interfaces[current_int].endpoint[ep_addr].endpoint        = ep_addr;
-                dev->interfaces[current_int].endpoint[ep_addr].direction       = endp_desc->bEndpointAddress & ENDPOINT_DIR_MASK;  
+                dev->interfaces[current_int].endpoint[ep_addr].direction       = endp_desc->bEndpointAddress & ENDPOINT_DIR_MASK;
             }
             break;
 
@@ -774,7 +779,7 @@ int usb_enumerate(struct usb_device *dev,
                     USBLOG(USBLOG_ERR, ("Invalid descriptor size, check configuration length!\n"));
                     return 0;
                 }
-                
+
                 USBLOG(USBLOG_ENUM, ("Class Descriptor (Interface %d)\n", current_int));
                 USBLOG(USBLOG_ENUM, (" Type=%x\n", desc_hdr->type));
                 USBLOG(USBLOG_ENUM, (" Length=%d\n", desc_hdr->size));
@@ -813,7 +818,7 @@ int usb_enumerate(struct usb_device *dev,
 struct usb_endpoint * usb_find_endpoint(struct usb_interface *intp, uint8_t type, uint8_t dir)
 {
     int i;
- 
+
     for (i=0;i<intp->if_endpoints;i++)
         if ((intp->endpoint[i].endpoint_type == type) && (intp->endpoint[i].direction == dir))
             return &intp->endpoint[i];

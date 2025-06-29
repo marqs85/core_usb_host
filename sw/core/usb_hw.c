@@ -1,11 +1,19 @@
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
+#include <unistd.h>
+//#include <assert.h>
 #include "usb_defs.h"
 #include "usb_hw.h"
+#include "sys/alt_timestamp.h"
 
 #ifndef USB_TESTBENCH
-#include "timer.h"
+void timer_sleep(int ms) {
+    usleep(1000*ms);
+}
+
+unsigned long timer_now() {
+    return alt_timestamp()/(TIMER_0_FREQ/1000);
+}
 #endif
 
 //-----------------------------------------------------------------
@@ -19,7 +27,12 @@
 // Current log level
 #define USBLOG_LEVEL    USBLOG_INFO
 
-#define LOG(l,a)        do { if (l <= USBLOG_LEVEL) printf a; } while (0)
+#ifdef USB_DEBUG
+extern int dd_printf(const char *__restrict fmt, ...);
+#define LOG(l,a)        do { if (l <= USBLOG_LEVEL) dd_printf a; } while (0)
+#else
+#define LOG(...)
+#endif
 
 //-----------------------------------------------------------------
 // Defines:
@@ -214,7 +227,7 @@ int usbhw_transfer_out(uint8_t pid, int device_addr, int endpoint, int handshake
 {
     int l;
     uint32_t ctrl = 0;
-    uint32_t token = 0; 
+    uint32_t token = 0;
     uint32_t resp;
     uint32_t status;
 
@@ -300,7 +313,7 @@ int usbhw_transfer_in(uint8_t pid, int device_addr, int endpoint, uint8_t *respo
     uint32_t status;
 
     LOG(USBLOG_DATA, ("TOKEN: %s", (pid == PID_SETUP) ? "SETUP" : (pid == PID_DATA0) ? "DATA0": (pid == PID_DATA1) ? "DATA1" : (pid == PID_IN) ? "IN" : "OUT"));
-    LOG(USBLOG_DATA, ("  DEV %d EP %d\n", device_addr, endpoint));    
+    LOG(USBLOG_DATA, ("  DEV %d EP %d\n", device_addr, endpoint));
 
     // No data to send
     usbhw_reg_write(USB_XFER_DATA, 0);
@@ -367,8 +380,8 @@ int usbhw_transfer_in(uint8_t pid, int device_addr, int endpoint, uint8_t *respo
     // reading the whole response into a buffer.
     // Hitting this condition may point towards issues with higher level protocol
     // implementation...
-    assert(rx_length >= rx_count);
-    
+    //assert(rx_length >= rx_count);
+
     for (l=0;l<rx_count;l++)
     {
         data = usbhw_reg_read(USB_RD_DATA);
@@ -449,7 +462,7 @@ void usbhw_hub_enable(int full_speed, int enable_sof)
 // usbhw_reset: Perform USB reset
 //-----------------------------------------------------------------
 int usbhw_reset(void)
-{    
+{
 #ifdef USB_TESTBENCH
     // Assert SE0 / reset
     usbhw_hub_reset();
@@ -479,6 +492,8 @@ int usbhw_reset(void)
     usbhw_hub_enable(usbhw_hub_full_speed_device(), 1);
     usbhw_timer_sleep(3);
 #endif
+
+    return 0;
 }
 //-----------------------------------------------------------------
 // usbhw_timer_sleep: Perform USB Reset
