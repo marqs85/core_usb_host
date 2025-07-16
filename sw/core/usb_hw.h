@@ -12,6 +12,7 @@ extern "C" {
 
 void usbhw_init(uint32_t base);
 int  usbhw_reset(void);
+int  usbhw_setup_device(void);
 void usbhw_hub_reset(void);
 int  usbhw_hub_device_detected(void);
 int  usbhw_hub_full_speed_device(void);

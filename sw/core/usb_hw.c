@@ -459,6 +459,17 @@ void usbhw_hub_enable(int full_speed, int enable_sof)
     usbhw_reg_write(USB_CTRL, val);
 }
 //-----------------------------------------------------------------
+// usbhw_setup_device: Setup USB device
+//-----------------------------------------------------------------
+int usbhw_setup_device(void)
+{
+    // Enable SOF
+    usbhw_hub_enable(usbhw_hub_full_speed_device(), 1);
+    usbhw_timer_sleep(3);
+
+    return 0;
+}
+//-----------------------------------------------------------------
 // usbhw_reset: Perform USB reset
 //-----------------------------------------------------------------
 int usbhw_reset(void)
@@ -479,7 +490,7 @@ int usbhw_reset(void)
     // Stop asserting SE0, set data lines to Hi-Z
     usbhw_hub_enable(1, 0);
     usbhw_timer_sleep(3);
-
+#ifdef USB_RESET_WAIT_DEVICE
     LOG(USBLOG_INFO, ("HW: Waiting for device insertion\n"));
 
     // Wait for device detect
@@ -491,6 +502,7 @@ int usbhw_reset(void)
     // Enable SOF
     usbhw_hub_enable(usbhw_hub_full_speed_device(), 1);
     usbhw_timer_sleep(3);
+#endif
 #endif
 
     return 0;
